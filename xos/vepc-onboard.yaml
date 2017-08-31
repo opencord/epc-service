@@ -1,0 +1,19 @@
+tosca_definitions_version: tosca_simple_yaml_1_0
+
+description: Onboard vepc-as-a-service
+
+imports:
+  - custom_types/xos.yaml
+
+topology_template:
+  node_templates:
+    servicecontroller#vepc:
+      type: tosca.nodes.ServiceController
+      properties:
+          base_url: file:///opt/xos_services/vepc/xos/
+          # The following will concatenate with base_url automatically, if
+          # base_url is non-null.
+          xproto: ./
+          tosca_custom_types: tosca/custom_types/vepc.yaml
+          tosca_resource: tosca/resources/vepctenant.py, tosca/resources/vepcservice.py
+

@@ -1,0 +1,26 @@
+option name = "vEPC";
+option verbose_name = "Virtual Evolved Packet Core";
+option app_label = "vepc";
+option kind = "epc-service";
+option legacy = "True";
+
+message VEPCService (Service){
+    option name = "VEPCService";
+    option verbose_name = "Virtual Evolved Packet Core Service";
+}
+
+message VEPCTenant (Tenant){
+    option name = "VEPCTenant";
+    option verbose_name = "Virtual Evolved Packet Core Tenant";
+    optional string description = 1 [help_text = "service chain details", max_length = 128, null = True, db_index = False, blank = True];
+    required manytoone creator->User:+ = 2 [help_text = "creator of this tenant", null = False, db_index = True, blank = False];
+    required bool has_vhss = 3 [help_text = "select if you would like to add a vhss instance to this service chain", db_index = False, default = False, blank = False];
+    required bool has_vmme = 4 [help_text = "select if you would like to add a vmme instance to this service chain", db_index = False, default = False, blank = False];
+    required bool has_vmm = 4 [help_text = "select if you would like to add a vmm instance to this service chain", db_index = False, default = False, blank = False];
+    required bool has_vsm = 5 [help_text = "select if you would like to add a vsm instance to this service chain", db_index = False, default = False, blank = False];
+    required bool has_vsgwc = 6 [help_text = "select if you would like to add a vsgwc instance to this service chain", db_index = False, default = False, blank = False];
+    required bool has_vsgwu = 7 [help_text = "select if you would like to add a vsgwu instance to this service chain", db_index = False, default = False, blank = False];
+    required bool has_vpgwc = 8 [help_text = "select if you would like to add a vpgwc instance to this service chain", db_index = False, default = False, blank = False];
+    required bool has_vpgwu = 9 [help_text = "select if you would like to add a vpgwu instance to this service chain", db_index = False, default = False, blank = False];
+}
+
