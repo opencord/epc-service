@@ -1,0 +1,14 @@
+name: vepc-synchronizer
+accessor:
+  username: xosadmin@opencord.org
+  password: "@/opt/xos/services/vepc/credentials/xosadmin@opencord.org"
+blueprints:
+  - name: build
+    graph:
+      VSPGWCTenant:
+        VSPGWUTenant:
+          VENBServiceInstance
+dependency_graph: "/opt/xos/synchronizers/epc-service/model-deps"
+#steps_dir: "/opt/xos/synchronizers/epc-service/steps"
+sys_dir: "/opt/xos/synchronizers/epc-service/sys"
+model_policies_dir: "/opt/xos/synchronizers/epc-service/model_policies"
