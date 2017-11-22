@@ -4,10 +4,46 @@ accessor:
   password: "@/opt/xos/services/vepc/credentials/xosadmin@opencord.org"
 blueprints:
   - name: build
+    networks:
+      - name: s1u_network
+        subnet: 111.0.0.0/24
+        permit_all_slices: True
+        template: s1u_template
+      - name: s11_network
+        subnet: 112.0.0.0/24
+        permit_all_slices: True
+        template: s11_template
+      - name: nbi_network
+        subnet: 113.0.0.0/24
+        permit_all_slices: True
+        template: nbi_template
+      - name: sbi_network
+        subnet: 114.0.0.0/24
+        permit_all_slices: True
+        template: nbi_template
+      - name: sgi_network
+        subnet: 115.0.0.0/24
+        permit_all_slices: True
+        template: nbi_template
+      - name: spgw_network
+        subnet: 117.0.0.0/24
+        permit_all_slices: True
+        template: nbi_template
     graph:
-      VSPGWCTenant:
-        VSPGWUTenant:
-          VENBServiceInstance
+      - name: VSPGWCTenant
+        networks:
+          - spgw_network
+          - sgi_network
+        links:
+          - name: VENBServiceInstance
+            networks:
+              - s11_network
+              - sgi_network
+              - flat_network
+          - name: VSPGWUTenant:
+            network: 
+              - spgw_network
+
 dependency_graph: "/opt/xos/synchronizers/epc-service/model-deps"
 #steps_dir: "/opt/xos/synchronizers/epc-service/steps"
 sys_dir: "/opt/xos/synchronizers/epc-service/sys"
