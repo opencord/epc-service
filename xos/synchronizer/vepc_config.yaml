@@ -29,6 +29,11 @@ blueprints:
         subnet: 117.0.0.0/24
         permit_all_slices: True
         template: nbi_template
+      - name: flat
+        subnet: 103.0.0.0/24
+        permit_all_slices: True
+        template: flat_template
+
     graph:
       - name: VSPGWCTenant
         networks:

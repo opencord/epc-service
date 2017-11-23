@@ -35,6 +35,8 @@ class VEPCServiceInstancePolicy(Policy):
 
     def __init__(self):
         self.in_memory_instances = []
+        self.network_map = {}
+
         super(VEPCServiceInstancePolicy, self).__init__()
 
     """TODO: Update the following to not be service-specific
@@ -84,15 +86,21 @@ class VEPCServiceInstancePolicy(Policy):
         self.in_memory_instances.append(s)
         return s
 
-    def create_link(self, src, dst):
-        src_instance = self.child_service_instance_from_name(src)
-        if not src_instance:
-            src_instance = self.create_service_instance(src)
+    def create_service_instance_with_networks(self, si_name, networks):
+        instance = self.child_service_instance_from_name(si_name)
+        if not instance:
+            instance = self.create_service_instance(si_name)
 
-        dst_instance = self.child_service_instance_from_name(dst)
-        if not dst_instance:
-            dst_instance = self.create_service_instance(dst)
-      
+        for n in networks:
+            one_and_only_slice_hopefully = instance.owner.slices.all()[0]
+            ns_object = NetworkSlice.objects.filter(network = n, slice = one_and_only_slice_hopefully)
+            if not ns_object:
+                ns_object = NetworkSlice(network = n, slice = one_and_only_slice_hopefully)
+                ns_object.save()
+
+        return instance
+
+    def create_link(self, src_instance, dst_instance):
         src_service = self.get_service_for_service_instance(src)
         dst_service = self.get_service_for_service_instance(dst)
 
@@ -107,16 +115,42 @@ class VEPCServiceInstancePolicy(Policy):
             service_instance_link.save()
 
     def recursive_create_links(self, blueprint, src):
-	for k, v in blueprint.iteritems():
+        for node in blueprint:
+            k = node['name']
+            networks = node.get('networks', [])
+            instance = self.create_service_instance_with_networks(k, networks)
+
 	    if src:
-		self.create_link(src, k)
+		self.create_link(src, instance)
 
-	    if isinstance(v, dict):
-		self.recursive_create_links(v, k)
-	    else:
-		self.create_link(k, v)
+            links = node.get('links', [])
+	    self.recursive_create_links(links, instance)
 
-    def create_child_services(self, service_instance):
+    def create_epc_network(self, n):
+        network_name = n['name']
+        site_name = self.obj.site.name
+        slice_name = '%s_%s'%(site_name, network_name)
+
+        slice = Slice.objects.get(name=slice_name)
+        if not slice:
+            slice = Slice(name = slice_name, default_isolation = "vm", network = "noauto", site = self.obj.site)
+            slice.save()
+
+        net = Network.objects.get(name=network_name)
+        if not net:
+            net = Network(name = network_name, subnet = n['subnet'], permit_all_slices = n.get('permit_all_slices', False), template = n.get('template', 'public'), owner = slice)
+            net.save()
+        elif net.subnet != n['subnet']:
+            net.subnet = n['subnet']
+            net.save()
+
+        self.network_map[network_name] = net
+
+    def create_networks(self, networks):
+        for n in networks:
+            self.create_epc_network(n)
+
+    def create_networks_and_child_services(self, service_instance):
         self.obj = service_instance
         # Create service graph based on blueprint
         chosen_blueprint = service_instance.blueprint
@@ -125,13 +159,14 @@ class VEPCServiceInstancePolicy(Policy):
         except StopIteration:
             log.error('Chosen blueprint (%s) not found' % chosen_blueprint)
 
+        self.create_networks(blueprint['networks'])
         self.recursive_create_links(blueprint['graph'], None)
 
     def handle_create(self, service_instance):
         self.handle_update(service_instance)
 
     def handle_update(self, service_instance):
-        self.create_child_services(service_instance)
+        self.create_networks_and_child_services(service_instance)
 
     def handle_delete(self, service_instance):
 	raise Exception("Not implemented")
