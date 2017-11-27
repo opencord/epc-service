@@ -20,34 +20,37 @@ blueprints:
       - name: sbi_network
         subnet: 114.0.0.0/24
         permit_all_slices: True
-        template: nbi_template
+        template: sbi_template
       - name: sgi_network
         subnet: 115.0.0.0/24
         permit_all_slices: True
-        template: nbi_template
+        template: sgi_template
       - name: spgw_network
         subnet: 117.0.0.0/24
         permit_all_slices: True
-        template: nbi_template
-      - name: flat
-        subnet: 103.0.0.0/24
-        permit_all_slices: True
-        template: flat_template
-
+        template: spgw_template
     graph:
+      - name: VENBServiceInstance
+        networks: 
+          - management
       - name: VSPGWCTenant
-        networks:
-          - spgw_network
-          - sgi_network
+        networks: 
+          - management
         links:
           - name: VENBServiceInstance
             networks:
               - s11_network
-              - sgi_network
-              - flat_network
-          - name: VSPGWUTenant:
-            network: 
+          - name: VSPGWUTenant
+            networks: 
               - spgw_network
+      - name: VSPGWUTenant
+        networks: 
+          - management
+        links:
+          - name: VENBServiceInstance
+            networks:
+              - s1u_network
+              - sgi_network
 
 dependency_graph: "/opt/xos/synchronizers/epc-service/model-deps"
 #steps_dir: "/opt/xos/synchronizers/epc-service/steps"
