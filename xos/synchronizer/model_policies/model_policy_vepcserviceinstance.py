@@ -44,7 +44,7 @@ class VEPCServiceInstancePolicy(Policy):
         super(VEPCServiceInstancePolicy, self).__init__()
 
     """TODO: Update the following to not be service-specific
-       This code assumes there is only one vendor installed 
+       This code assumes there is only one vendor installed
     """
 
     def configure_service_instance(self, service_instance):
@@ -53,11 +53,14 @@ class VEPCServiceInstancePolicy(Policy):
             if not vendor:
                 raise Exception('No VSPGWU vendors')
             service_instance.vspgwu_vendor = vendor
+            service_instance.invalidate_cache('vspgwu_vendor')
         elif service_instance.leaf_model_name == 'VSPGWCTenant':
             vendor = VSPGWCVendor.objects.first()
             if not vendor:
                 raise Exception('No VSPGWC vendors')
             service_instance.vspgwc_vendor = vendor
+            service_instance.invalidate_cache('vspgwc_vendor')
+
 
     def child_service_instance_from_name(self, name):
         service_instances = self.obj.child_serviceinstances.all()
@@ -86,6 +89,7 @@ class VEPCServiceInstancePolicy(Policy):
         s = si_class(owner=service, name='epc-%s-%d' %
                      (si.lower(), self.obj.id))
         s.master_serviceinstance = self.obj
+        s.save()
 
         self.configure_service_instance(s)
         s.save()
@@ -148,7 +152,7 @@ class VEPCServiceInstancePolicy(Policy):
 
     def create_epc_network(self, n):
         network_name = n['name']
-        site_name = self.obj.site.name
+        site_name = self.obj.site.login_base
         slice_name = '%s_%s' % (
             site_name, network_name.replace('_network', ''))
 
