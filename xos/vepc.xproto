@@ -1,14 +1,11 @@
-option name = "vEPC";
-option verbose_name = "Virtual Evolved Packet Core";
+option name = "vepc";
 option app_label = "vepc";
 
 message VEPCService (Service){
-    option name = "VEPCService";
     option verbose_name = "Virtual Evolved Packet Core Service";
 }
 
 message VEPCServiceInstance (TenantWithContainer){
-    option name = "VEPCServiceInstance";
     option verbose_name = "Virtual Evolved Packet Core ServiceInstance";
     optional string description = 1 [help_text = "service chain details", max_length = 128, null = True, db_index = False, blank = True];
     required manytoone site->Site:+ = 2 [help_text = "Site of the EPC Service", null = False, db_index = True, blank = False];
