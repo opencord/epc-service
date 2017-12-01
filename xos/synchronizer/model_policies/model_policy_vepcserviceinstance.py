@@ -97,6 +97,17 @@ class VEPCServiceInstancePolicy(Policy):
         self.in_memory_instances.append(s)
         return s
 
+    def add_networks_to_service(self, service, networks):
+        for n in networks:
+            net = Network.objects.filter(name=n)[0]
+            one_and_only_slice_hopefully = service.slices.all()[0]
+            ns_object = NetworkSlice.objects.filter(
+                network=net.id, slice=one_and_only_slice_hopefully.id)
+            if not ns_object:
+                ns_object = NetworkSlice(
+                    network=net, slice=one_and_only_slice_hopefully)
+                ns_object.save()
+
     def add_networks_to_service_instance(self, instance, networks):
         for n in networks:
             net = Network.objects.filter(name=n)[0]
@@ -109,11 +120,12 @@ class VEPCServiceInstancePolicy(Policy):
                 ns_object.save()
 
     def create_service_instance_with_networks(self, si_name, networks):
+        service = self.get_service_for_service_instance(si_name)
+        self.add_networks_to_service(service, networks)
+
         instance = self.child_service_instance_from_name(si_name)
         if not instance:
             instance = self.create_service_instance(si_name)
-
-        self.add_networks_to_service_instance(instance, networks)
 
         return instance
 
