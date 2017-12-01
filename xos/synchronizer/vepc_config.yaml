@@ -33,9 +33,14 @@ blueprints:
       - name: VENBServiceInstance
         networks: 
           - management
+          - s1u_network
+          - sgi_network
+          - s11_network
       - name: VSPGWCTenant
         networks: 
           - management
+          - s11_network
+          - spgw_network
         links:
           - name: VENBServiceInstance
             networks:
@@ -46,6 +51,9 @@ blueprints:
       - name: VSPGWUTenant
         networks: 
           - management
+          - s1u_network
+          - sgi_network
+          - spgw_network
         links:
           - name: VENBServiceInstance
             networks:
