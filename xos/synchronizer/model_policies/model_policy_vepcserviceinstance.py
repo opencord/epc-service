@@ -149,18 +149,25 @@ class VEPCServiceInstancePolicy(Policy):
                 provider_service_instance=dst_instance, subscriber_service_instance=src_instance)
             service_instance_link.save()
 
-    def recursive_create_links(self, blueprint, src):
+    def recursive_create_instances_and_links(self, blueprint, src, service_instances):
         for node in blueprint:
             k = node['name']
             networks = node.get('networks', [])
             instance = self.create_service_instance_with_networks(k, networks)
+            instance.no_sync = True
+            instance.save()
+
+            service_instances.append(instance)
 
             if src:
                 self.add_networks_to_service_instance(src, networks)
                 self.create_link(src, instance)
 
             links = node.get('links', [])
-            self.recursive_create_links(links, instance)
+            service_instances = self.recursive_create_instances_and_links(links, instance, service_instances)
+
+        return service_instances
+
 
     def create_epc_network(self, n):
         network_name = n['name']
@@ -211,7 +218,12 @@ class VEPCServiceInstancePolicy(Policy):
             log.error('Chosen blueprint (%s) not found' % chosen_blueprint)
 
         self.create_networks(blueprint['networks'])
-        self.recursive_create_links(blueprint['graph'], None)
+
+        service_instances = self.recursive_create_instances_and_links(blueprint['graph'], None, [])
+
+        for si in service_instances:
+            si.no_sync = False
+            si.save()
 
     def handle_create(self, service_instance):
         self.handle_update(service_instance)
