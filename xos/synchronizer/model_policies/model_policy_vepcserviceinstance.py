@@ -230,6 +230,3 @@ class VEPCServiceInstancePolicy(Policy):
 
     def handle_update(self, service_instance):
         self.create_networks_and_child_services(service_instance)
-
-    def handle_delete(self, service_instance):
-        raise Exception("Not implemented")
