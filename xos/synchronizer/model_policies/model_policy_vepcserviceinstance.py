@@ -80,7 +80,7 @@ class VEPCServiceInstancePolicy(Policy):
         service_obj = service_class.objects.first()  # There's only one service object
         return service_obj
 
-    def create_service_instance(self, si):
+    def create_service_instance(self, si, node_label = None):
         service = self.get_service_for_service_instance(si)
         if not service:
             raise Exception('No service object for %s' % service)
@@ -89,6 +89,10 @@ class VEPCServiceInstancePolicy(Policy):
         s = si_class(owner=service, name='epc-%s-%d' %
                      (si.lower(), self.obj.id))
         s.master_serviceinstance = self.obj
+
+        if node_label:
+            s.node_label = '%s-%d'%(node_label, self.obj.id)
+
         s.no_sync = True
         s.save()
 
@@ -120,13 +124,14 @@ class VEPCServiceInstancePolicy(Policy):
                     network=net, slice=one_and_only_slice_hopefully)
                 ns_object.save()
 
-    def create_service_instance_with_networks(self, si_name, networks):
+    def create_service_instance_with_networks(self, si_name, networks, node_label = None):
         service = self.get_service_for_service_instance(si_name)
         self.add_networks_to_service(service, networks)
 
         instance = self.child_service_instance_from_name(si_name)
+
         if not instance:
-            instance = self.create_service_instance(si_name)
+            instance = self.create_service_instance(si_name, node_label = node_label)
 
         return instance
 
@@ -154,19 +159,26 @@ class VEPCServiceInstancePolicy(Policy):
         for node in blueprint:
             k = node['name']
             networks = node.get('networks', [])
-            instance = self.create_service_instance_with_networks(k, networks)
+            links = node.get('links', [])
 
+            try:
+                node_label = node['node_label']
+            except KeyError:
+                try:
+                    node_label = next(l['node_label'] for l in links if l.get('node_label', None))
+                except StopIteration:
+                    node_label = None
+
+            instance = self.create_service_instance_with_networks(k, networks, node_label = node_label)
             service_instances.append(instance)
 
             if src:
                 self.add_networks_to_service_instance(src, networks)
                 self.create_link(src, instance)
 
-            links = node.get('links', [])
             service_instances = self.recursive_create_instances_and_links(links, instance, service_instances)
 
         return service_instances
-
 
     def create_epc_network(self, n):
         network_name = n['name']

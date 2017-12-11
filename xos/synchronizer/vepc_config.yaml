@@ -30,6 +30,18 @@ blueprints:
         permit_all_slices: True
         template: spgw_template
     graph:
+      - name: VSPGWUTenant
+        networks: 
+          - management
+          - s1u_network
+          - sgi_network
+          - spgw_network
+        links:
+          - name: VENBServiceInstance
+            node_label: gwu-enb
+            networks:
+              - s1u_network
+              - sgi_network
       - name: VENBServiceInstance
         networks: 
           - management
@@ -48,18 +60,7 @@ blueprints:
           - name: VSPGWUTenant
             networks: 
               - spgw_network
-      - name: VSPGWUTenant
-        networks: 
-          - management
-          - s1u_network
-          - sgi_network
-          - spgw_network
-        links:
-          - name: VENBServiceInstance
-            networks:
-              - s1u_network
-              - sgi_network
-
+      
 dependency_graph: "/opt/xos/synchronizers/epc-service/model-deps"
 #steps_dir: "/opt/xos/synchronizers/epc-service/steps"
 sys_dir: "/opt/xos/synchronizers/epc-service/sys"
