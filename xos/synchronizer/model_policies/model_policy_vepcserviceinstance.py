@@ -89,6 +89,7 @@ class VEPCServiceInstancePolicy(Policy):
         s = si_class(owner=service, name='epc-%s-%d' %
                      (si.lower(), self.obj.id))
         s.master_serviceinstance = self.obj
+        s.no_sync = True
         s.save()
 
         self.configure_service_instance(s)
@@ -154,8 +155,6 @@ class VEPCServiceInstancePolicy(Policy):
             k = node['name']
             networks = node.get('networks', [])
             instance = self.create_service_instance_with_networks(k, networks)
-            instance.no_sync = True
-            instance.save()
 
             service_instances.append(instance)
 
