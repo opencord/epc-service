@@ -60,7 +60,53 @@ blueprints:
           - name: VSPGWUTenant
             networks: 
               - spgw_network
-      
+  - name: mcord_5
+    networks:
+      - name: flat_network_s1u
+        subnet: 119.0.0.0/24
+        permit_all_slices: True
+        template: s11_template
+      - name: flat_network_s1mme
+        subnet: 118.0.0.0/24
+        permit_all_slices: True
+        template: s11_template
+      - name: s11_network
+        subnet: 112.0.0.0/24
+        permit_all_slices: True
+        template: s11_template
+      - name: sgi_network
+        subnet: 115.0.0.0/24
+        permit_all_slices: True
+        template: sgi_template
+      - name: spgw_network
+        subnet: 117.0.0.0/24
+        permit_all_slices: True
+        template: spgw_template
+    graph:
+      - name: VMMETenant
+        networks:
+          - management
+          - flat_network_s1mme
+          - s11_network
+      - name: VSPGWCTenant
+        networks:
+          - management
+          - s11_network
+          - spgw_network
+        links:
+          - name: VMMETenant
+            networks:
+              - s11_network
+          - name: VSPGWUTenant
+            networks:
+              - spgw_network
+      - name: VSPGWUTenant
+        networks:
+          - management
+          - flat_network_s1u
+          - sgi_network
+          - spgw_network
+
 dependency_graph: "/opt/xos/synchronizers/epc-service/model-deps"
 #steps_dir: "/opt/xos/synchronizers/epc-service/steps"
 sys_dir: "/opt/xos/synchronizers/epc-service/sys"

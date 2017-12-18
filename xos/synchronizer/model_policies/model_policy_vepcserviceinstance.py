@@ -60,6 +60,12 @@ class VEPCServiceInstancePolicy(Policy):
                 raise Exception('No VSPGWC vendors')
             service_instance.vspgwc_vendor = vendor
             service_instance.invalidate_cache('vspgwc_vendor')
+        elif service_instance.leaf_model_name == 'VMMETenant':
+            vendor = VMMEVendor.objects.first()
+            if not vendor:
+                raise Exception('No VMME vendors')
+            service_instance.vmme_vendor = vendor
+            service_instance.invalidate_cache('vmme_vendor')
 
 
     def child_service_instance_from_name(self, name):
