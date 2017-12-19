@@ -94,6 +94,7 @@ class VEPCServiceInstancePolicy(Policy):
             s.node_label = '%s-%d'%(node_label, self.obj.id)
 
         s.no_sync = True
+        s.no_policy = True
         s.save()
 
         self.configure_service_instance(s)
@@ -233,6 +234,7 @@ class VEPCServiceInstancePolicy(Policy):
         service_instances = self.recursive_create_instances_and_links(blueprint['graph'], None, [])
 
         for si in service_instances:
+            si.no_policy = False
             si.no_sync = False
             si.save()
 
