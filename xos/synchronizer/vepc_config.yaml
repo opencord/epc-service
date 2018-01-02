@@ -8,30 +8,26 @@ blueprints:
       - name: s1u_network
         subnet: 111.0.0.0/24
         permit_all_slices: True
-        template: s1u_template
+        template: private_template
+        owner: vspgwu
       - name: s11_network
         subnet: 112.0.0.0/24
         permit_all_slices: True
-        template: s11_template
-      - name: nbi_network
-        subnet: 113.0.0.0/24
-        permit_all_slices: True
-        template: nbi_template
-      - name: sbi_network
-        subnet: 114.0.0.0/24
-        permit_all_slices: True
-        template: sbi_template
+        template: private_template
+        owner: vspgwc
       - name: sgi_network
         subnet: 115.0.0.0/24
         permit_all_slices: True
-        template: sgi_template
+        template: private_template
+        owner: vspgwu
       - name: spgw_network
         subnet: 117.0.0.0/24
         permit_all_slices: True
-        template: spgw_template
+        template: private_template
+        owner: vspgwu
     graph:
       - name: VSPGWUTenant
-        networks: 
+        networks:
           - management
           - s1u_network
           - sgi_network
@@ -43,13 +39,13 @@ blueprints:
               - s1u_network
               - sgi_network
       - name: VENBServiceInstance
-        networks: 
+        networks:
           - management
           - s1u_network
           - sgi_network
           - s11_network
       - name: VSPGWCTenant
-        networks: 
+        networks:
           - management
           - s11_network
           - spgw_network
@@ -58,36 +54,51 @@ blueprints:
             networks:
               - s11_network
           - name: VSPGWUTenant
-            networks: 
+            networks:
               - spgw_network
   - name: mcord_5
     networks:
       - name: flat_network_s1u
         subnet: 119.0.0.0/24
         permit_all_slices: True
-        template: s11_template
+        template: flat_template
+        owner: vspgwu
       - name: flat_network_s1mme
         subnet: 118.0.0.0/24
         permit_all_slices: True
-        template: s11_template
+        template: flat_template
+        owner: vmme
       - name: s11_network
         subnet: 112.0.0.0/24
         permit_all_slices: True
-        template: s11_template
+        template: private_template
+        owner: vspgwc
       - name: sgi_network
         subnet: 115.0.0.0/24
         permit_all_slices: True
-        template: sgi_template
+        owner: vspgwu
+        template: private_template
       - name: spgw_network
         subnet: 117.0.0.0/24
         permit_all_slices: True
-        template: spgw_template
+        template: private_template
+        owner: vspgwu
+      - name: s6a_network
+        subnet: 120.0.0.0/24
+        permit_all_slices: True
+        template: private_template
+        owner: vhss
     graph:
       - name: VMMETenant
         networks:
           - management
           - flat_network_s1mme
           - s11_network
+          - s6a_network
+        links:
+          - name: VHSSTenant
+            networks:
+              - s6a_network
       - name: VSPGWCTenant
         networks:
           - management
@@ -106,6 +117,10 @@ blueprints:
           - flat_network_s1u
           - sgi_network
           - spgw_network
+      - name: VHSSTenant
+        networks:
+          - management
+          - s6a_network
 
 dependency_graph: "/opt/xos/synchronizers/epc-service/model-deps"
 #steps_dir: "/opt/xos/synchronizers/epc-service/steps"

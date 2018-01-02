@@ -66,6 +66,12 @@ class VEPCServiceInstancePolicy(Policy):
                 raise Exception('No VMME vendors')
             service_instance.vmme_vendor = vendor
             service_instance.invalidate_cache('vmme_vendor')
+        elif service_instance.leaf_model_name == 'VHSSTenant':
+            vendor = VHSSVendor.objects.first()
+            if not vendor:
+                raise Exception('No VHSS vendors')
+            service_instance.vhss_vendor = vendor
+            service_instance.invalidate_cache('vhss_vendor')
 
 
     def child_service_instance_from_name(self, name):
@@ -190,28 +196,24 @@ class VEPCServiceInstancePolicy(Policy):
     def create_epc_network(self, n):
         network_name = n['name']
         site_name = self.obj.site.login_base
-        slice_name = '%s_%s' % (
-            site_name, network_name.replace('_network', ''))
-
-        slices = Slice.objects.filter(name=slice_name)
-        if not slices:
-            flavor = Flavor.objects.all()[0]
-            image = Image.objects.all()[0]
-            slice = Slice(name=slice_name, default_isolation="vm", network="noauto",
-                          site=self.obj.site, default_flavor=flavor, default_image=image)
-            slice.save()
-        else:
-            slice = slices[0]
 
         nets = Network.objects.filter(name=network_name)
         if not nets:
             template_name = n.get('template', 'public')
-            templates = NetworkTemplate.objects.filter(name=template_name)
-            if not templates:
-                raise Exception('Template %s not found' % template_name)
+            try:
+                template = NetworkTemplate.objects.filter(name=template_name)[0]
+            except:
+                raise Exception('Template %s for network %s not found' % (template_name, network_name))
+
+            slice_name = '%s_%s' % (site_name, n['owner'])
+            try:
+                slice = Slice.objects.filter(name=slice_name)[0]
+            except:
+                raise Exception('Owner slice %s for network %s not found' % (slice_name, network_name))
+
 
             net = Network(name=network_name, subnet=n['subnet'], permit_all_slices=n.get(
-                'permit_all_slices', False), template=templates[0], owner=slice)
+                'permit_all_slices', False), template=template, owner=slice)
             net.save()
         else:
             net = nets[0]
