@@ -72,7 +72,12 @@ class VEPCServiceInstancePolicy(Policy):
                 raise Exception('No VHSS vendors')
             service_instance.vhss_vendor = vendor
             service_instance.invalidate_cache('vhss_vendor')
-
+        elif service_instance.leaf_model_name == 'HSSDBServiceInstance':
+            vendor = HSSDBVendor.objects.first()
+            if not vendor:
+                raise Exception('No HSSDB vendors')
+            service_instance.hssdb_vendor = vendor
+            service_instance.invalidate_cache('hssdb_vendor')
 
     def child_service_instance_from_name(self, name):
         service_instances = self.obj.child_serviceinstances.all()

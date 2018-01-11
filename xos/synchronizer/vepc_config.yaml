@@ -88,6 +88,11 @@ blueprints:
         permit_all_slices: True
         template: private_template
         owner: vhss
+      - name: db_network
+        subnet: 121.0.0.0/24
+        permit_all_slices: True
+        template: private_template
+        owner: vhss
     graph:
       - name: VMMETenant
         networks:
@@ -121,6 +126,15 @@ blueprints:
         networks:
           - management
           - s6a_network
+          - db_network
+        links:
+          - name: HSSDBServiceInstance
+            networks:
+              - db_network
+      - name: HSSDBServiceInstance
+        networks:
+          - management
+          - db_network
 
 dependency_graph: "/opt/xos/synchronizers/epc-service/model-deps"
 #steps_dir: "/opt/xos/synchronizers/epc-service/steps"
