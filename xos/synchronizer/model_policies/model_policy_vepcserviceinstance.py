@@ -57,7 +57,6 @@ class VEPCServiceInstancePolicy(Policy):
             service_instance.enodeb_mac_addr = self.obj.enodeb_mac_addr_s1u
             service_instance.appserver_ip_addr = self.obj.appserver_ip_addr
             service_instance.appserver_mac_addr = self.obj.appserver_mac_addr
-            service_instance.blueprint = self.obj.blueprint
             service_instance.invalidate_cache('vspgwu_vendor')
         elif service_instance.leaf_model_name == 'VSPGWCTenant':
             vendor = VSPGWCVendor.objects.first()
@@ -68,7 +67,6 @@ class VEPCServiceInstancePolicy(Policy):
             service_instance.enodeb_mac_addr = self.obj.enodeb_mac_addr_s1u
             service_instance.appserver_ip_addr = self.obj.appserver_ip_addr
             service_instance.appserver_mac_addr = self.obj.appserver_mac_addr
-            service_instance.blueprint = self.obj.blueprint
             service_instance.invalidate_cache('vspgwc_vendor')
         elif service_instance.leaf_model_name == 'VMMETenant':
             vendor = VMMEVendor.objects.first()
