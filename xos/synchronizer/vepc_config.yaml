@@ -135,6 +135,60 @@ blueprints:
         networks:
           - management
           - db_network
+  - name: mcord_5_p4
+    networks:
+      - name: flat_network_s1mme
+        subnet: 118.0.0.0/24
+        permit_all_slices: True
+        template: flat_template
+        owner: vmme
+      - name: s11_network
+        subnet: 112.0.0.0/24
+        permit_all_slices: True
+        template: private_template
+        owner: vspgwc
+      - name: s6a_network
+        subnet: 120.0.0.0/24
+        permit_all_slices: True
+        template: private_template
+        owner: vhss
+      - name: db_network
+        subnet: 121.0.0.0/24
+        permit_all_slices: True
+        template: private_template
+        owner: vhss
+    graph:
+      - name: VMMETenant
+        networks:
+          - management
+          - flat_network_s1mme
+          - s11_network
+          - s6a_network
+        links:
+          - name: VHSSTenant
+            networks:
+              - s6a_network
+      - name: VSPGWCTenant
+        networks:
+          - management
+          - s11_network
+        links:
+          - name: VMMETenant
+            networks:
+              - s11_network
+      - name: VHSSTenant
+        networks:
+          - management
+          - s6a_network
+          - db_network
+        links:
+          - name: HSSDBServiceInstance
+            networks:
+              - db_network
+      - name: HSSDBServiceInstance
+        networks:
+          - management
+          - db_network
 
 dependency_graph: "/opt/xos/synchronizers/epc-service/model-deps"
 #steps_dir: "/opt/xos/synchronizers/epc-service/steps"

@@ -9,7 +9,7 @@ message VEPCServiceInstance (TenantWithContainer){
     option verbose_name = "Virtual Evolved Packet Core ServiceInstance";
     optional string description = 1 [help_text = "service chain details", max_length = 128, null = True, db_index = False, blank = True];
     required manytoone site->Site:+ = 2 [help_text = "Site of the EPC Service", null = False, db_index = True, blank = False];
-    required string blueprint = 3 [help_text = "Select the service graph blueprint", db_index = False, default = 1, choices = "(('build', 'MCORD 4.1'),('mcord_5', 'MCORD 5'))"];
+    required string blueprint = 3 [help_text = "Select the service graph blueprint", db_index = False, default = 1, choices = "(('build', 'MCORD 4.1'),('mcord_5', 'MCORD 5'),('mcord_5_p4', 'MCORD 5 - P4'))"];
 
     optional string enodeb_ip_addr_s1mme = 4 [help_text = "external eNodeB IP address of S1-MME (for 5.0)", default = "118.0.0.10", max_length = 32, null = True, db_index = False, blank = True];
     optional string enodeb_ip_addr_s1u = 5 [help_text = "external eNodeB IP address of S1U (for 5.0)", default = "119.0.0.10", max_length = 32, null = True, db_index = False, blank = True];
