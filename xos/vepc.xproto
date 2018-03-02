@@ -7,6 +7,8 @@ message VEPCService (Service){
 
 message VEPCServiceInstance (TenantWithContainer){
     option verbose_name = "Virtual Evolved Packet Core ServiceInstance";
+    option owner_class_name="VEPCService";
+
     optional string description = 1 [help_text = "service chain details", max_length = 128, null = True, db_index = False, blank = True];
     required manytoone site->Site:+ = 2 [help_text = "Site of the EPC Service", null = False, db_index = True, blank = False];
     required string blueprint = 3 [help_text = "Select the service graph blueprint", db_index = False, default = 1, choices = "(('build', 'MCORD 4.1'),('mcord_5', 'MCORD 5'),('mcord_5_p4', 'MCORD 5 - P4'))"];
