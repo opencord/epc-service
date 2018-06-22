@@ -20,248 +20,248 @@ from xosconfig import Config
 from multistructlog import create_logger
 
 log = create_logger(Config().get('logging'))
-
 blueprints = Config().get('blueprints')
-
-
-def service_of_service_instance(si):
-    if si.endswith('Tenant'):
-        return si[:-len('Tenant')] + 'Service'
-    elif si.endswith('ServiceInstance'):
-        return si[:-len('ServiceInstance')] + 'Service'
-    else:
-        raise Exception(
-            'Could not translate service instance into service: %s' % si)
 
 
 class VEPCServiceInstancePolicy(Policy):
     model_name = "VEPCServiceInstance"
 
-    def __init__(self):
-        self.in_memory_instances = []
-        self.network_map = {}
+    def get_service_object(self, name):
+        """ return: First Service object """
+        if any(map(lambda x: x in name, ["ServiceInstance", "Tenant"])):
+            name = name.replace("ServiceInstance", "Service")
+            name = name.replace("Tenant", "Service")
 
-        super(VEPCServiceInstancePolicy, self).__init__()
+        service_obj = getattr(Slice().stub, name).objects.first()
 
-    """TODO: Update the following to not be service-specific
-       This code assumes there is only one vendor installed
-    """
+        if not service_obj:
+            raise Exception("No %s object existed." % name)
 
-    def configure_service_instance(self, service_instance):
-        if service_instance.leaf_model_name == 'VSPGWUTenant':
-            vendor = VSPGWUVendor.objects.first()
-            if not vendor:
-                raise Exception('No VSPGWU vendors')
-            service_instance.vspgwu_vendor = vendor
-            service_instance.enodeb_ip_addr = self.obj.enodeb_ip_addr_s1u
-            service_instance.enodeb_mac_addr = self.obj.enodeb_mac_addr_s1u
-            service_instance.appserver_ip_addr = self.obj.appserver_ip_addr
-            service_instance.appserver_mac_addr = self.obj.appserver_mac_addr
-            service_instance.invalidate_cache('vspgwu_vendor')
-        elif service_instance.leaf_model_name == 'VSPGWCTenant':
-            vendor = VSPGWCVendor.objects.first()
-            if not vendor:
-                raise Exception('No VSPGWC vendors')
-            service_instance.vspgwc_vendor = vendor
-            service_instance.enodeb_ip_addr = self.obj.enodeb_ip_addr_s1u
-            service_instance.enodeb_mac_addr = self.obj.enodeb_mac_addr_s1u
-            service_instance.appserver_ip_addr = self.obj.appserver_ip_addr
-            service_instance.appserver_mac_addr = self.obj.appserver_mac_addr
-            service_instance.invalidate_cache('vspgwc_vendor')
-        elif service_instance.leaf_model_name == 'VMMETenant':
-            vendor = VMMEVendor.objects.first()
-            if not vendor:
-                raise Exception('No VMME vendors')
-            service_instance.vmme_vendor = vendor
-            service_instance.enodeb_ip_addr = self.obj.enodeb_ip_addr_s1mme
-            service_instance.invalidate_cache('vmme_vendor')
-        elif service_instance.leaf_model_name == 'VHSSTenant':
-            vendor = VHSSVendor.objects.first()
-            if not vendor:
-                raise Exception('No VHSS vendors')
-            service_instance.vhss_vendor = vendor
-            service_instance.invalidate_cache('vhss_vendor')
-        elif service_instance.leaf_model_name == 'HSSDBServiceInstance':
-            vendor = HSSDBVendor.objects.first()
-            if not vendor:
-                raise Exception('No HSSDB vendors')
-            service_instance.hssdb_vendor = vendor
-            service_instance.invalidate_cache('hssdb_vendor')
-
-    def child_service_instance_from_name(self, name):
-        service_instances = self.obj.child_serviceinstances.all()
-        service_instances.extend(self.in_memory_instances)
-
-        try:
-            service_instance = next(
-                s for s in service_instances if s.leaf_model_name == name)
-        except StopIteration:
-            service_instance = None
-
-        return service_instance
-
-    def get_service_for_service_instance(self, si):
-        service = service_of_service_instance(si)
-        service_class = getattr(Slice().stub, service)
-        service_obj = service_class.objects.first()  # There's only one service object
         return service_obj
 
-    def create_service_instance(self, si, node_label = None):
-        service = self.get_service_for_service_instance(si)
-        if not service:
-            raise Exception('No service object for %s' % service)
+    def get_tenant_class(self, name):
+        """
+        return: Tenant class
+        We need to claim new Tenant instance(object) by this class
+        """
+        if not name.endswith("Service"):
+            raise Exception("Tenant object needs to find with Service name.")
 
-        si_class = getattr(Slice().stub, si)
-        s = si_class(owner=service, name='epc-%s-%d' %
-                     (si.lower(), self.obj.id))
-        s.master_serviceinstance = self.obj
+        if hasattr(Slice().stub, name + "Instance"):
+            tenant_class = getattr(Slice().stub, name + "Instance")
+        elif hasattr(Slice().stub, name.replace("Service", "Tenant")):
+            tenant_class = getattr(Slice().stub, name.replace("Service", "Tenant"))
+        else:
+            raise Exception("No %s class existed." % name)
+
+        return tenant_class
+
+    def get_vendor_object(self, name):
+        postfixs = ["Service", "ServiceInstance", "Tenant"]
+        if not any(map(lambda x: name.endswith(x), postfixs)):
+            raise Exception("Vendor object need to find with Service or Tenant name.")
+
+        for postfix in postfixs:
+            name = name.replace(postfix, "Vendor")
+
+        vendor_obj = getattr(Slice().stub, name).objects.first()
+
+        if not vendor_obj:
+            raise Exception("No %s object existed." % name)
+
+        return vendor_obj
+
+    def create_service_instance(self, service_obj, node_label=None):
+        tenant_class = self.get_tenant_class(service_obj.leaf_model_name)
+        vendor_obj = self.get_vendor_object(service_obj.leaf_model_name)
+
+        vendor_name = "%s_vendor" % service_obj.name.lower()
+        name = "epc-%s-%d" % (tenant_class.__name__.lower(), self.obj.id)
+
+        instance = tenant_class.objects.filter(owner=service_obj.id, name=name).first()
+
+        if instance:
+            return instance
+
+        instance = tenant_class(owner=service_obj, name=name)
+        instance.master_serviceinstance = self.obj
+        instance.__setattr__(vendor_name, vendor_obj)
 
         if node_label:
-            s.node_label = '%s-%d'%(node_label, self.obj.id)
+            instance.node_label = "%s-%d" % (node_label, self.obj.id)
 
-        s.no_sync = True
-        s.no_policy = True
-        s.save()
+        # Assign custom parameter to child tenant
+        if name in ["vspgwc", "vspgwu"]:
+            instance.enodeb_ip_addr = self.obj.enodeb_ip_addr_s1u
+            instance.enodeb_mac_addr = self.obj.enodeb_mac_addr_s1u
+            instance.appserver_ip_addr = self.obj.appserver_ip_addr
+            instance.appserver_mac_addr = self.obj.appserver_mac_addr
+        elif name in ["vmme"]:
+            instance.enodeb_ip_addr = self.obj.enodeb_ip_addr_s1mme
 
-        self.configure_service_instance(s)
-        s.save()
+        instance.no_sync = True
+        instance.no_policy = True
+        instance.invalidate_cache(vendor_name)
 
-        self.in_memory_instances.append(s)
-        return s
+        instance.save()
 
-    def add_networks_to_service(self, service, networks):
-        for n in networks:
-            net = Network.objects.filter(name=n)[0]
-            one_and_only_slice_hopefully = service.slices.all()[0]
-            ns_object = NetworkSlice.objects.filter(
-                network=net.id, slice=one_and_only_slice_hopefully.id)
-            if not ns_object:
-                ns_object = NetworkSlice(
-                    network=net, slice=one_and_only_slice_hopefully)
-                ns_object.save()
-
-    def add_networks_to_service_instance(self, instance, networks):
-        for n in networks:
-            net = Network.objects.filter(name=n)[0]
-            one_and_only_slice_hopefully = instance.owner.slices.all()[0]
-            ns_object = NetworkSlice.objects.filter(
-                network=net.id, slice=one_and_only_slice_hopefully.id)
-            if not ns_object:
-                ns_object = NetworkSlice(
-                    network=net, slice=one_and_only_slice_hopefully)
-                ns_object.save()
-
-    def create_service_instance_with_networks(self, si_name, networks, node_label = None):
-        service = self.get_service_for_service_instance(si_name)
-        self.add_networks_to_service(service, networks)
-
-        instance = self.child_service_instance_from_name(si_name)
-
-        if not instance:
-            instance = self.create_service_instance(si_name, node_label = node_label)
+        log.info("Instance %s was created." % instance)
 
         return instance
 
-    def create_link(self, src_instance, dst_instance):
-        src_service = self.get_service_for_service_instance(
-            src_instance.leaf_model_name)
-        dst_service = self.get_service_for_service_instance(
-            dst_instance.leaf_model_name)
-
-        service_dependency = ServiceDependency.objects.filter(
-            provider_service_id=dst_service.id, subscriber_service_id=src_service.id)
-        if not service_dependency:
-            service_dependency = ServiceDependency(
-                provider_service=dst_service, subscriber_service=src_service)
-            service_dependency.save()
-
-        service_instance_link = ServiceInstanceLink.objects.filter(
-            provider_service_instance_id=dst_instance.id, subscriber_service_instance_id=src_instance.id)
-        if not service_instance_link:
-            service_instance_link = ServiceInstanceLink(
-                provider_service_instance=dst_instance, subscriber_service_instance=src_instance)
-            service_instance_link.save()
-
-    def recursive_create_instances_and_links(self, blueprint, src, service_instances):
-        for node in blueprint:
-            k = node['name']
-            networks = node.get('networks', [])
-            links = node.get('links', [])
-
-            try:
-                node_label = node['node_label']
-            except KeyError:
-                try:
-                    node_label = next(l['node_label'] for l in links if l.get('node_label', None))
-                except StopIteration:
-                    node_label = None
-
-            instance = self.create_service_instance_with_networks(k, networks, node_label = node_label)
-            service_instances.append(instance)
-
-            if src:
-                self.add_networks_to_service_instance(src, networks)
-                self.create_link(src, instance)
-
-            service_instances = self.recursive_create_instances_and_links(links, instance, service_instances)
-
-        return service_instances
-
-    def create_epc_network(self, n):
-        network_name = n['name']
+    def create_network(self, network):
+        name = network.get("name", "")
+        owner = network.get("owner", "")
         site_name = self.obj.site.login_base
+        template_name = network.get("template", "public")
+        subnet = network.get("subnet", "")
+        permit_all_slices = network.get("permit_all_slices", False)
 
-        nets = Network.objects.filter(name=network_name)
-        if not nets:
-            template_name = n.get('template', 'public')
-            try:
-                template = NetworkTemplate.objects.filter(name=template_name)[0]
-            except:
-                raise Exception('Template %s for network %s not found' % (template_name, network_name))
+        # Get Network, If Network subnet mismatch, then update
+        # If Network existed, then early return.
+        network_obj = Network.objects.filter(name=name).first()
+        if network_obj:
+            if network_obj.subnet != subnet:
+                network_obj.subnet = subnet
+                network_obj.save()
+            return network_obj
 
-            slice_name = '%s_%s' % (site_name, n['owner'])
-            try:
-                slice = Slice.objects.filter(name=slice_name)[0]
-            except:
-                raise Exception('Owner slice %s for network %s not found' % (slice_name, network_name))
+        # Get Network Template by assigned name.
+        template = NetworkTemplate.objects.filter(name=template_name).first()
+        if not template:
+            raise Exception("Template %s for network %s is not exist." % (template_name, name))
 
+        # Get Network owner slice by assigned name.
+        slice_name = "%s_%s" % (site_name, owner)
+        owner_slice = Slice.objects.filter(name=slice_name).first()
+        if not owner_slice:
+            raise Exception("Owner Slice %s for network %s is not exist." % (owner, name))
 
-            net = Network(name=network_name, subnet=n['subnet'], permit_all_slices=n.get(
-                'permit_all_slices', False), template=template, owner=slice)
-            net.save()
-        else:
-            net = nets[0]
-            if net.subnet != n['subnet']:
-                net.subnet = n['subnet']
-                net.save()
+        # Create Network Instance and save.
+        network = Network(name=name, subnet=subnet, template=template,
+                          permit_all_slices=permit_all_slices, owner=owner_slice)
+        network.save()
 
-        self.network_map[network_name] = net
+        log.info("Network %s was created." % network)
 
-    def create_networks(self, networks):
-        for n in networks:
-            self.create_epc_network(n)
+        return network
 
-    def create_networks_and_child_services(self, service_instance):
-        self.obj = service_instance
-        # Create service graph based on blueprint
-        chosen_blueprint = service_instance.blueprint
-        try:
-            blueprint = next(
-                b for b in blueprints if b['name'] == chosen_blueprint)
-        except StopIteration:
-            log.error('Chosen blueprint (%s) not found' % chosen_blueprint)
+    def create_service_dependency(self, source, target):
+        """
+        Create Service Dependency object for Connectivity between service
+        source: source service object
+        target: target service object
+        """
 
-        self.create_networks(blueprint['networks'])
+        # Use Subscriber and Provider's ID to get Dependency
+        dependency = ServiceDependency.objects.filter(
+            subscriber_service_id=source.id, provider_service_id=target.id
+        ).first()
 
-        service_instances = self.recursive_create_instances_and_links(blueprint['graph'], None, [])
+        if not dependency:
+            # If no dependency existed, then create dependency
+            dependency = ServiceDependency(
+                subscriber_service=source, provider_service=target
+            )
+            dependency.save()
 
-        for si in service_instances:
-            si.no_policy = False
-            si.no_sync = False
-            si.save()
+            log.info("Service dependency %s was created, %s->%s" % (dependency, source, target))
+
+        # Get subscriber and provider's Service Instance
+        source_tenant_class = self.get_tenant_class(source.leaf_model_name)
+        target_tenant_class = self.get_tenant_class(target.leaf_model_name)
+        source_tenants = source_tenant_class.objects.all()
+        target_tenants = target_tenant_class.objects.all()
+
+        # Use cross product to create ServiceInstance Link
+        for source_tenant in source_tenants:
+            for target_tenant in target_tenants:
+                link = ServiceInstanceLink.objects.filter(
+                    subscriber_service_instance_id=source_tenant.id,
+                    provider_service_instance_id=target_tenant.id
+                )
+
+                if not link:
+                    link = ServiceInstanceLink(
+                        subscriber_service_instance=source_tenant,
+                        provider_service_instance=target_tenant
+                    )
+
+                    link.save()
+
+                    log.info("Service instance link %s was created" % link)
+
+        return dependency
+
+    def assign_network_to_service(self, service, network):
+        service_slice = service.slices.first()
+        network_slice = NetworkSlice.objects.filter(
+            network=network.id, slice=service_slice.id
+        )
+
+        if not network_slice:
+            network_slice = NetworkSlice(
+                network=network, slice=service_slice
+            )
+            network_slice.save()
+
+        return network_slice
+
+    def create_services_from_blueprint(self, blueprint):
+        dependencies = list()
+        instances = list()
+
+        for network in blueprint["networks"]:
+            network_instance = self.create_network(network)
+
+        for node in blueprint["graph"]:
+            # Get Service's Name, Network, Link attribute from blueprint node
+            # If value is not set, return empty data struct instead.
+            tenant_str = node.get("name", "")
+            networks = node.get("networks", list())
+            links = node.get("links", list())
+            node_label = node.get("node_label", None)
+
+            # Get Service Class by Defined Service Instance Name
+            # service_obj: Service Object in XOS core
+            # tenant_obj: Tenant Object in XOS core
+            service_obj = self.get_service_object(tenant_str)
+
+            for network in networks:
+                network_obj = Network.objects.filter(name=network).first()
+                self.assign_network_to_service(service_obj, network_obj)
+
+            instance = self.create_service_instance(service_obj, node_label=node_label)
+            instances.append(instance)
+
+            # Collect Service Dependencies relationship from links
+            for provider in links:
+                provider_str = provider.get("name", "")
+                provider_service_obj = self.get_service_object(provider_str)
+                dependencies.append((service_obj, provider_service_obj))
+
+        log.info("Dependency Pair: %s" % dependencies)
+
+        # Create Service Dependency between subscriber and provider
+        for subscriber, provider in dependencies:
+            self.create_service_dependency(subscriber, provider)
+
+        for instance in instances:
+            instance.no_policy = False
+            instance.no_sync = False
+            instance.save()
 
     def handle_create(self, service_instance):
         self.handle_update(service_instance)
 
     def handle_update(self, service_instance):
-        self.create_networks_and_child_services(service_instance)
+        # Register EPC-Service's service_instance as self.obj
+        self.obj = service_instance
+
+        blueprint_name = service_instance.blueprint
+        try:
+            blueprint = filter(lambda x: x["name"] == blueprint_name, blueprints)[0]
+        except StopIteration:
+            log.error("Chosen blueprint: %s not defined" % blueprint_name)
+
+        self.create_services_from_blueprint(blueprint)
